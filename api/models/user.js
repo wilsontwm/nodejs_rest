@@ -23,10 +23,15 @@ const userSchema = mongoose.Schema({
     },
     activationCode: {
         type: String,
-        required: false
+        default: null
     }
 });
 
 // Virtual attributes
+userSchema
+.virtual('isActivated')
+.get(function() {
+    return this.activationCode === null;
+});
 
 module.exports = mongoose.model('User', userSchema);

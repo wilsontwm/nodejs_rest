@@ -122,3 +122,60 @@ exports.users_signup = (req, res, next) => {
     });
     
 };
+
+exports.users_login = (req, res, next) => {
+    const tasks = [
+        async.apply(getUserByEmail, req),
+        function authenticateUser(users, cb) {
+            if(users.length > 0) {
+                bcrypt.compare(req.body.password, users[0].password, (err, result) => {
+                    if(err) return cb(err);
+                    
+                    if(result) {
+                        // If user is not activated, then do not login
+                        if(!users[0].isActivated) {
+                            return cb(true, {
+                                message: 'Login unsuccessful. You have to activate your account first.'
+                            })
+                        }
+
+                        const token = jwt.sign(
+                            {
+                                email: users[0].email,
+                                userId: users[0]._id
+                            }, 
+                            process.env.JWT_KEY,
+                            {
+                                expiresIn: "1h"
+                            }
+                        );
+                        return cb(null, {
+                            token: token,
+                            message: 'You have successfully login.'
+                        });
+                    } else {
+                        return cb(true, {
+                            message: 'Invalid email / password.'
+                        })
+                    }
+                });
+            } else {
+                return cb(true, {
+                    message: 'Invalid email / password.'
+                });
+            }
+        }
+    ];
+
+    async.waterfall(tasks, (err, results) => {
+        if(err) {
+            if(err === true) {
+                return res.status(409).json({
+                    results: results
+                });
+            }
+            return next(err);            
+        }
+        return res.json(results);
+    });
+};
