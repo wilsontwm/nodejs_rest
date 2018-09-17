@@ -3,12 +3,13 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const async = require('async');
 const md5 = require('md5');
+const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const User = require('../models/user');
 
 function getUserByEmail(req, cb) {
     // Check if the email has already been taken
-    User.find({email: req.body.email}).exec()
+    User.findOne({email: req.body.email}).exec()
     .then(result => {
         return cb(null, result);            
     })
@@ -21,8 +22,8 @@ function getUserByEmail(req, cb) {
 exports.users_signup = (req, res, next) => {   
     const tasks = [
         async.apply(getUserByEmail, req),
-        function hashPassword(result, cb) {
-            if(result.length > 0) {
+        function hashPassword(user, cb) {
+            if(user) {
                 return cb(true, {
                     message: 'Email has already been taken.'
                 });
@@ -123,14 +124,14 @@ exports.users_signup = (req, res, next) => {
 exports.users_login = (req, res, next) => {
     const tasks = [
         async.apply(getUserByEmail, req),
-        function authenticateUser(users, cb) {
-            if(users.length > 0) {
-                bcrypt.compare(req.body.password, users[0].password, (err, result) => {
+        function authenticateUser(user, cb) {
+            if(user) {
+                bcrypt.compare(req.body.password, user.password, (err, result) => {
                     if(err) return cb(err);
                     
                     if(result) {
                         // If user is not activated, then do not login
-                        if(!users[0].isActivated) {
+                        if(!user.isActivated) {
                             return cb(true, {
                                 message: 'Login unsuccessful. You have to activate your account first.'
                             })
@@ -138,8 +139,8 @@ exports.users_login = (req, res, next) => {
 
                         const token = jwt.sign(
                             {
-                                email: users[0].email,
-                                userId: users[0]._id
+                                email: user.email,
+                                userId: user._id
                             }, 
                             process.env.JWT_KEY,
                             {
@@ -179,65 +180,63 @@ exports.users_login = (req, res, next) => {
 
 exports.users_resend_activation = (req, res, next) => {
     const tasks = [
-        async.apply(getUserByEmail, req),
-        function sendActivationEmail(users, cb) {
-            if(users.length > 0) {
-                user = users[0];
+        async.apply(getUserByEmail, req),        
+        function setActivateCode(user, cb) {
+            if(user) {
                 const activationCode = md5(user._id + Date.now());
-                User.updateOne({_id: user._id}, { 'activationCode': activationCode })
-                .exec()
-                .then(result => {
-                    // create reusable transporter object using the default SMTP transport
-                    let transporter = nodemailer.createTransport({
-                        host: 'smtp.ethereal.email',
-                        port: 587,
-                        secure: false, // true for 465, false for other ports
-                        auth: {
-                            user: 'l4spet4dpcnb6mh2@ethereal.email', // generated ethereal user
-                            pass: 'YmAkUFKFJ3mJ3u1R8q' // generated ethereal password
-                        },
-                        tls: {
-                            rejectUnauthorized: false
-                        }
-                    });
-    
-                    // setup email data with unicode symbols
-                    const activationURL = 'http://localhost:3000/api/users/activate/' + activationCode;
-                    let mailOptions = {
-                        from: '"Node Mailer" <l4spet4dpcnb6mh2@ethereal.email>', // sender address
-                        to: '"' + user.name + '"' + user.email, // list of receivers separated by comma
-                        subject: 'Activate your account', // Subject line
-                        html: '<h2>Hello world?</h2><p>Click on the link below to activate your account:<br /><a href="' + activationURL + '">' + activationURL + '</a></p>' // html body
-                    };
-    
-                    // send mail with defined transport object
-                    transporter.sendMail(mailOptions, (err, info) => {
-                        if (err) {
-                            return cb(err);
-                        }
-                        console.log('Message sent: %s', info.messageId);
-                        // Preview only available when sending through an Ethereal account
-                        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
-                        return cb(null, {
-                            user: {
-                                name: user.name,
-                                email: user.email
-                            },
-                            activation: activationURL,
-                            message: 'An activation email has been sent to your email address.'
-                        });
-                        
-                    });
-                    
-                })
-                .catch(err => {
-                    return cb(err);
+                user.activationCode = activationCode;
+
+                user.save(function(err) {
+                    return cb(err, activationCode, user);
                 });
             } else {
                 return cb(true, {
                     message: 'Invalid email address.'
-                })
-            }
+                });
+            }   
+        },
+        function sendActivationEmail(activationCode, user, cb) {
+            // create reusable transporter object using the default SMTP transport
+            let transporter = nodemailer.createTransport({
+                host: 'smtp.ethereal.email',
+                port: 587,
+                secure: false, // true for 465, false for other ports
+                auth: {
+                    user: 'l4spet4dpcnb6mh2@ethereal.email', // generated ethereal user
+                    pass: 'YmAkUFKFJ3mJ3u1R8q' // generated ethereal password
+                },
+                tls: {
+                    rejectUnauthorized: false
+                }
+            });
+
+            // setup email data with unicode symbols
+            const activationURL = 'http://localhost:3000/api/users/activate/' + activationCode;
+            let mailOptions = {
+                from: '"Node Mailer" <l4spet4dpcnb6mh2@ethereal.email>', // sender address
+                to: '"' + user.name + '"' + user.email, // list of receivers separated by comma
+                subject: 'Activate your account', // Subject line
+                html: '<h2>Hello world?</h2><p>Click on the link below to activate your account:<br /><a href="' + activationURL + '">' + activationURL + '</a></p>' // html body
+            };
+
+            // send mail with defined transport object
+            transporter.sendMail(mailOptions, (err, info) => {
+                if (err) {
+                    return cb(err);
+                }
+                console.log('Message sent: %s', info.messageId);
+                // Preview only available when sending through an Ethereal account
+                console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+                return cb(null, {
+                    user: {
+                        name: user.name,
+                        email: user.email
+                    },
+                    activation: activationURL,
+                    message: 'An activation email has been sent to your email address.'
+                });
+                
+            });
         }
     ];
 
@@ -259,7 +258,12 @@ exports.users_activate = (req, res, next) => {
     const tasks = [
         function getUserByActivationCode(cb) {
             User.findOne({activationCode: code}).exec()
-            .then(result => {
+            .then(result => {                
+                if(!result) {
+                    return cb(true, {
+                        message: 'Invalid activation link.'
+                    });
+                }
                 return cb(null, result);            
             })
             .catch(err => {
@@ -267,18 +271,93 @@ exports.users_activate = (req, res, next) => {
             });
         },
         function activateAccount(user, cb) {
-            if(!user) {
-                return cb(true, {
-                    message: 'Invalid activation link.'
-                });
-            }
-
             // Set the activation code as null to indicate the user account has been activated
             user.activationCode = null;
-            user.save();
+            user.save(function(err) {
+                return cb(null, {
+                    message: 'You have successfully activated your account.'
+                });
+            });            
+        }
+    ];
 
-            return cb(null, {
-                message: 'You have successfully activated your account.'
+    async.waterfall(tasks, (err, results) => {
+        if(err) {
+            if(err === true) {
+                return res.status(409).json({
+                    results: results
+                });
+            }
+            return next(err);            
+        }
+        return res.json(results);
+    });
+};
+
+exports.users_password_forget = (req, res, next) => {
+    const tasks = [
+        async.apply(getUserByEmail, req),
+        function generateToken(user, cb) {
+            if(user && user.isActivated) {
+                crypto.randomBytes(20, function(err, buf) {
+                    var token = buf.toString('hex');
+                    return cb(err, token, user);
+                });
+            } else {
+                return cb(true, {
+                    message: 'Invalid email address or the user account is not activated yet.'
+                });
+            }
+        },
+        function setToken(token, user, cb) {
+            user.resetPasswordToken = token;
+            user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+
+            user.save(function(err) {
+                return cb(err, token, user);
+            });
+        },
+        function sendResetPasswordEmail(token, user, cb) {
+            
+            let transporter = nodemailer.createTransport({
+                host: 'smtp.ethereal.email',
+                port: 587,
+                secure: false, // true for 465, false for other ports
+                auth: {
+                    user: 'l4spet4dpcnb6mh2@ethereal.email', // generated ethereal user
+                    pass: 'YmAkUFKFJ3mJ3u1R8q' // generated ethereal password
+                },
+                tls: {
+                    rejectUnauthorized: false
+                }
+            });
+
+            // setup email data with unicode symbols
+            const resetPasswordURL = 'http://localhost:3000/api/users/password/reset/' + token;
+            let mailOptions = {
+                from: '"Node Mailer" <l4spet4dpcnb6mh2@ethereal.email>', // sender address
+                to: '"' + user.name + '"' + user.email, // list of receivers separated by comma
+                subject: 'Reset your password', // Subject line
+                html: '<h2>Hello world?</h2><p>Click on the link below to reset your password:<br /><a href="' + resetPasswordURL + '">' + resetPasswordURL + '</a></p>' // html body
+            };
+
+            // send mail with defined transport object
+            transporter.sendMail(mailOptions, (err, info) => {
+                if (err) {
+                    return cb(err);
+                }
+                console.log('Message sent: %s', info.messageId);
+                // Preview only available when sending through an Ethereal account
+                console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+                return cb(null, {
+                    user: {
+                        name: user.name,
+                        email: user.email
+                    },
+                    resetPassword: resetPasswordURL,
+                    message: 'An reset password email has been sent to your email address.'
+                });
+                
             });
         }
     ];
@@ -296,6 +375,53 @@ exports.users_activate = (req, res, next) => {
     });
 };
 
-exports.users_reset_password = (req, res, next) => {
+exports.users_password_reset = (req, res, next) => {
+    const token = req.params.token;
+    const tasks = [
+        function getUserByResetPasswordToken(cb) {
+            User.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() }}).exec()
+            .then(result => {
+                if(!result) {
+                    return cb(true, {
+                        message: 'Password reset token is invalid or has expired.'
+                    });
+                }
 
+                return cb(null, result, req);            
+            })
+            .catch(err => {
+                return cb(err);
+            });
+        },
+        function resetPassword(user, req, cb) {
+
+            bcrypt.hash(req.body.password, 10, (err, hash) => {
+                if(err) {
+                    return cb(err);
+                } 
+                
+                user.password = hash;
+                user.resetPasswordToken = undefined;
+                user.resetPasswordExpires = undefined;
+
+                user.save(function(err) {
+                    return cb(err, {
+                        message: 'You have successfully reset your password.'
+                    });
+                });
+            });      
+        }
+    ];
+
+    async.waterfall(tasks, (err, results) => {
+        if(err) {
+            if(err === true) {
+                return res.status(409).json({
+                    results: results
+                });
+            }
+            return next(err);            
+        }
+        return res.json(results);
+    });
 };

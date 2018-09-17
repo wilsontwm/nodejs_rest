@@ -24,6 +24,12 @@ const userSchema = mongoose.Schema({
     activationCode: {
         type: String,
         default: null
+    },
+    resetPasswordToken: {
+        type: String
+    },
+    resetPasswordExpires: {
+        type: Date
     }
 });
 
