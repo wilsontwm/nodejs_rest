@@ -255,7 +255,45 @@ exports.users_resend_activation = (req, res, next) => {
 };
 
 exports.users_activate = (req, res, next) => {
+    const code = req.params.code;
+    const tasks = [
+        function getUserByActivationCode(cb) {
+            User.findOne({activationCode: code}).exec()
+            .then(result => {
+                return cb(null, result);            
+            })
+            .catch(err => {
+                return cb(err);
+            });
+        },
+        function activateAccount(user, cb) {
+            if(!user) {
+                return cb(true, {
+                    message: 'Invalid activation link.'
+                });
+            }
 
+            // Set the activation code as null to indicate the user account has been activated
+            user.activationCode = null;
+            user.save();
+
+            return cb(null, {
+                message: 'You have successfully activated your account.'
+            });
+        }
+    ];
+
+    async.waterfall(tasks, (err, results) => {
+        if(err) {
+            if(err === true) {
+                return res.status(409).json({
+                    results: results
+                });
+            }
+            return next(err);            
+        }
+        return res.json(results);
+    });
 };
 
 exports.users_reset_password = (req, res, next) => {
