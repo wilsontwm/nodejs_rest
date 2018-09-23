@@ -425,3 +425,22 @@ exports.users_password_reset = (req, res, next) => {
         return res.json(results);
     });
 };
+
+exports.users_profile_update = (req, res, next) => {
+    const userId = req.user.userId;
+    const input = {
+        bio: req.body.bio
+    };
+
+    User.findOneAndUpdate({_id: userId}, {$set: input}, {new: true})
+    .select('_id name email bio')
+    .lean()
+    .then(result => {
+        return res.status(200).json(result);
+    })
+    .catch(err => {
+        return res.status(500).json({
+            error: err
+        });
+    });
+};

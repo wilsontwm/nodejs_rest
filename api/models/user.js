@@ -30,6 +30,9 @@ const userSchema = mongoose.Schema({
     },
     resetPasswordExpires: {
         type: Date
+    },
+    bio: {
+        type: String
     }
 });
 
