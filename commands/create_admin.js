@@ -1,3 +1,4 @@
+// Command: npm run create_admin -- --name=Admin --email=admin@gmail.com --password=password
 const argv = require('yargs').argv;
 const async = require('async');
 const bcrypt = require('bcrypt');
