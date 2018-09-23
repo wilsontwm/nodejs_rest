@@ -13,6 +13,7 @@ mongoose.connect('mongodb://' + process.env.MLAB_USER + ':' + process.env.MLAB_P
 });
 mongoose.set('useCreateIndex', true);
 
+app.use('/uploads', express.static('uploads'));
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 

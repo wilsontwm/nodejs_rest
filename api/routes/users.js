@@ -10,5 +10,6 @@ router.get('/activate/:code', UserController.users_activate);
 router.post('/password/forget', UserController.users_password_forget);
 router.post('/password/reset/:token', UserController.users_password_reset);
 router.post('/profile/update', checkAuthentication, UserController.users_profile_update);
+router.post('/profile/upload', checkAuthentication, UserController.users_profile_upload_pic);
 
 module.exports = router;

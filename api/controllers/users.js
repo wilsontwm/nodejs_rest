@@ -5,7 +5,48 @@ const async = require('async');
 const md5 = require('md5');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const mime = require('mime-types');
+const mkdirp = require('mkdirp');
+const fs = require('fs');
 const User = require('../models/user');
+const multer = require('multer');
+const storage = multer.diskStorage({
+    destination: function(req, file, cb) {
+        try {
+            const userId = req.user.userId;
+            const dir = './uploads/users/profile/' + userId + '/';
+            
+            // Make a new directory for the user if necessary
+            mkdirp(dir, err => cb(err, dir));
+        } catch (err) {
+            console.log(err);
+            cb(null, './uploads');
+        }
+    },
+    filename: function(req, file, cb) {
+        crypto.randomBytes(20, function(err, buf) {
+            var token = buf.toString('hex');
+            cb(err, token + '.' + mime.extension(file.mimetype));
+        });
+    }
+});
+const fileFilter = (req, file, cb) => {
+    // Check the file type
+    if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+        cb(null, true);
+    } else {
+        const error = 'Invalid file type. Only .jpg and .png files are allowed.';
+        cb(error, false);
+    }
+};
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 1024 * 1024 * 5 // limit file size to 5MB
+    },
+    fileFilter: fileFilter
+});
+const imageUpload = upload.single('image');
 
 function getUserByEmail(req, cb) {
     // Check if the email has already been taken
@@ -436,11 +477,50 @@ exports.users_profile_update = (req, res, next) => {
     .select('_id name email bio')
     .lean()
     .then(result => {
-        return res.status(200).json(result);
+        return res.status(200).json({
+            message: 'Profile has been updated successfully.',
+            user: result
+        });
     })
     .catch(err => {
         return res.status(500).json({
             error: err
+        });
+    });
+};
+
+exports.users_profile_upload_pic = (req, res, next) => {
+    const userId = req.user.userId;
+    imageUpload(req, res, function(err) {
+        if(err) {
+            return res.status(500).json({
+                error: err
+            });
+        }
+        const profilePicUrl = req.file.path;
+        User.findOne({_id: userId})
+        .then(user => {
+            if(user.profilePicture) {
+                // If the user has profile picture saved before, delete it from file system to save storage
+                fs.unlink(user.profilePicture, (err) => {
+                    if (err) throw err;
+                    console.log(user.profilePicture + ' has been deleted successfully.');
+                });
+            }
+
+            user.profilePicture = profilePicUrl;
+            user.save(function(err) {
+                return res.status(200).json({
+                    message: 'Profile picture has been uploaded successfully.',
+                    path: profilePicUrl
+                });
+            });
+           
+        })
+        .catch(err => {
+            return res.status(500).json({
+                error: err
+            });
         });
     });
 };
