@@ -7,9 +7,9 @@ dotenv.config();
 
 // Routes
 const userRoutes = require('./api/routes/users');
-
-mongoose.connect('mongodb://' + process.env.MLAB_USER + ':' + process.env.MLAB_PW + '@ds125914.mlab.com:25914/test-app', {
-    useNewUrlParser: true
+mongoose.connect('mongodb://' + process.env.MONGO_USERNAME + ':' + encodeURIComponent(process.env.MONGO_PASSWORD) + '@' + process.env.MONGO_HOST + '/' + process.env.MONGO_DB, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
 });
 mongoose.set('useCreateIndex', true);
 

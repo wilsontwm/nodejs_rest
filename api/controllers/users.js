@@ -181,6 +181,7 @@ exports.users_login = (req, res, next) => {
                         const token = jwt.sign(
                             {
                                 email: user.email,
+                                isAdministrator: user.isAdministrator,
                                 userId: user._id
                             }, 
                             process.env.JWT_KEY,
@@ -209,7 +210,7 @@ exports.users_login = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(409).json({
+                return res.status(400).json({
                     results: results
                 });
             }
@@ -284,7 +285,7 @@ exports.users_resend_activation = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(409).json({
+                return res.status(400).json({
                     results: results
                 });
             }
@@ -325,7 +326,7 @@ exports.users_activate = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(409).json({
+                return res.status(400).json({
                     results: results
                 });
             }
@@ -406,7 +407,7 @@ exports.users_password_forget = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(409).json({
+                return res.status(400).json({
                     results: results
                 });
             }
@@ -468,7 +469,7 @@ exports.users_password_reset = (req, res, next) => {
 };
 
 exports.users_profile_update = (req, res, next) => {
-    const userId = req.user.userId;
+    const userId = res.locals.user.userId;
     const input = {
         bio: req.body.bio
     };
@@ -490,7 +491,7 @@ exports.users_profile_update = (req, res, next) => {
 };
 
 exports.users_profile_upload_pic = (req, res, next) => {
-    const userId = req.user.userId;
+    const userId = res.locals.user.userId;
     imageUpload(req, res, function(err) {
         if(err) {
             return res.status(500).json({

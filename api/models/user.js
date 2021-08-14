@@ -36,6 +36,16 @@ const userSchema = mongoose.Schema({
     },
     profilePicture: {
         type: String
+    },
+    annualLeaveBalance: {
+        type: Number,
+        default: 16
+    },
+    createdAt: {
+        type: Date
+    },
+    updatedAt: {
+        type: Date
     }
 });
 
