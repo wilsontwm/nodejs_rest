@@ -7,6 +7,8 @@ dotenv.config();
 
 // Routes
 const userRoutes = require('./api/routes/users');
+const leavesRoutes = require('./api/routes/leaves');
+
 mongoose.connect('mongodb://' + process.env.MONGO_USERNAME + ':' + encodeURIComponent(process.env.MONGO_PASSWORD) + '@' + process.env.MONGO_HOST + '/' + process.env.MONGO_DB, {
     useNewUrlParser: true,
     useUnifiedTopology: true
@@ -31,6 +33,7 @@ app.use((req, res, next) => {
 
 // Add routers below
 app.use('/api/users', userRoutes);
+app.use('/api/leaves', leavesRoutes);
 
 // Error handling
 app.use((req, res, next) => {
