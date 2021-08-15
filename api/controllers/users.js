@@ -174,7 +174,7 @@ exports.users_login = (req, res, next) => {
                         // If user is not activated, then do not login
                         if(!user.isActivated) {
                             return cb(true, {
-                                message: 'Login unsuccessful. You have to activate your account first.'
+                                error: 'Login unsuccessful. You have to activate your account first.'
                             })
                         }
 
@@ -190,18 +190,23 @@ exports.users_login = (req, res, next) => {
                             }
                         );
                         return cb(null, {
-                            token: token,
-                            message: 'You have successfully login.'
+                            item: {
+                                name: user.name,
+                                email: user.email,
+                                isAdministrator: user.isAdministrator,
+                                token: token,
+                            },
+                            error: 'You have successfully login.'
                         });
                     } else {
                         return cb(true, {
-                            message: 'Invalid email / password.'
+                            error: 'Invalid email / password.'
                         })
                     }
                 });
             } else {
                 return cb(true, {
-                    message: 'Invalid email / password.'
+                    error: 'Invalid email / password.'
                 });
             }
         }
@@ -210,9 +215,7 @@ exports.users_login = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(400).json({
-                    results: results
-                });
+                return res.status(400).json(results);
             }
             return next(err);            
         }

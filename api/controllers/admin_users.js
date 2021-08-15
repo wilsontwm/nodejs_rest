@@ -36,7 +36,7 @@ exports.admin_create_user = async(req, res, next) => {
             })
         }
 
-        const user = await UserRepo.createUser({name: req.body.name, email: req.body.email, password: req.body.password, isAdministrator: req.body.isAdministrator});
+        const user = await UserRepo.createUser({name: req.body.name, email: req.body.email, password: req.body.password, isAdmin: req.body.isAdministrator});
         
         user.password = "";
 

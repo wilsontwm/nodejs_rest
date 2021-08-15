@@ -23,8 +23,9 @@ exports.getUsers = ({id, name, email, limit, cursor}) => {
             }
         }
 
-        if(!limit || limit <= 0) {
-            lim = 10
+        lim = 10
+        if(!!limit && limit > 0) {
+            lim = parseInt(limit)
         }
 
         let skip = 0;
@@ -32,9 +33,8 @@ exports.getUsers = ({id, name, email, limit, cursor}) => {
             skip = Number(hex.hexToUtf8(cursor));
         }
 
-        User.find(query, {password: 0}, { skip: skip, limit: parseInt(limit) + 1 }).exec()
+        User.find(query, {password: 0}, { skip: skip, limit: lim + 1 }).exec()
         .then(result => {
-            lim = parseInt(limit)
             if(result.length > lim) {
                 result = result.slice(0, lim)
                 resolve({items: result, count: result.length, cursor: hex.utf8ToHex(String(skip+lim))}); 

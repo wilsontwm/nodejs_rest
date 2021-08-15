@@ -20,8 +20,9 @@ exports.getLeaves = ({userID, startAt, endAt, limit, cursor}) => {
             }
         }
 
-        if(!limit || limit <= 0) {
-            lim = 10
+        lim = 10
+        if(!!limit && limit > 0) {
+            lim = parseInt(limit)
         }
 
         let skip = 0;
@@ -29,9 +30,8 @@ exports.getLeaves = ({userID, startAt, endAt, limit, cursor}) => {
             skip = Number(hex.hexToUtf8(cursor));
         }
 
-        Leave.find(query, {}, { skip: skip, limit: parseInt(limit) + 1 }).exec()
+        Leave.find(query, {}, { skip: skip, limit: lim + 1 }).exec()
         .then(result => {
-            lim = parseInt(limit)
             if(result.length > lim) {
                 result = result.slice(0, lim)
                 resolve({items: result, count: result.length, cursor: hex.utf8ToHex(String(skip+lim))}); 

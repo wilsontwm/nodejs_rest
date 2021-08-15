@@ -16,8 +16,8 @@ exports.admin_get_leaves = async(req, res, next) => {
 
     } catch (e){
         return res.status(500).json({
-            message: "Internal server error",
-            error: e
+            error: "Internal server error",
+            debug: e
         });
     }
 };
@@ -37,11 +37,11 @@ exports.admin_review_leave = async(req, res, next) => {
         const leave = await LeaveRepo.getLeaveByID(req.params.leaveID);
         if(!leave) {
             return res.status(404).json({
-                message: "Leave not found."
+                error: "Leave not found."
             })
         } else if(leave.status !== "PENDING") {
             return res.status(412).json({
-                message: "Leave has been reviewed or cancelled."
+                error: "Leave has been reviewed or cancelled."
             })
         }
 
@@ -57,8 +57,8 @@ exports.admin_review_leave = async(req, res, next) => {
 
     } catch (e){
         return res.status(500).json({
-            message: "Internal server error",
-            error: e
+            error: "Internal server error",
+            debug: e
         });
     }
 };
@@ -107,7 +107,7 @@ exports.create_leave = async(req, res, next) => {
 
     if(noOfDays <= 0) {
         return res.status(412).json({
-            message: "Days input are invalid, please ensure at least 1 weekday is selected"
+            error: "Days input are invalid, please ensure at least 1 weekday is selected"
         })
     }
     
@@ -126,8 +126,8 @@ exports.create_leave = async(req, res, next) => {
 
     } catch (e){
         return res.status(500).json({
-            message: "Internal server error",
-            error: e
+            error: "Internal server error",
+            debug: e
         });
     }
 };
@@ -160,15 +160,15 @@ exports.update_leave = async(req, res, next) => {
         const existingLeave = await LeaveRepo.getLeaveByID(leaveID);
         if(!existingLeave) {
             return res.status(404).json({
-                message: "Leave not found"
+                error: "Leave not found"
             })
         } else if(existingLeave.userId !== res.locals.user.userId) {
             return res.status(404).json({
-                message: "Leave not found"
+                error: "Leave not found"
             })
         } else if(existingLeave.status !== "PENDING") {
             return res.status(400).json({
-                message: "Leave cannot be updated anymore."
+                error: "Leave cannot be updated anymore."
             })
         }
 
@@ -187,8 +187,8 @@ exports.update_leave = async(req, res, next) => {
 
     } catch (e){
         return res.status(500).json({
-            message: "Internal server error",
-            error: e
+            error: "Internal server error",
+            debug: e
         });
     }
 };
