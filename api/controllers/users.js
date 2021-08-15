@@ -174,13 +174,14 @@ exports.users_login = (req, res, next) => {
                         // If user is not activated, then do not login
                         if(!user.isActivated) {
                             return cb(true, {
-                                message: 'Login unsuccessful. You have to activate your account first.'
+                                error: 'Login unsuccessful. You have to activate your account first.'
                             })
                         }
 
                         const token = jwt.sign(
                             {
                                 email: user.email,
+                                isAdministrator: user.isAdministrator,
                                 userId: user._id
                             }, 
                             process.env.JWT_KEY,
@@ -189,18 +190,23 @@ exports.users_login = (req, res, next) => {
                             }
                         );
                         return cb(null, {
-                            token: token,
-                            message: 'You have successfully login.'
+                            item: {
+                                name: user.name,
+                                email: user.email,
+                                isAdministrator: user.isAdministrator,
+                                token: token,
+                            },
+                            error: 'You have successfully login.'
                         });
                     } else {
                         return cb(true, {
-                            message: 'Invalid email / password.'
+                            error: 'Invalid email / password.'
                         })
                     }
                 });
             } else {
                 return cb(true, {
-                    message: 'Invalid email / password.'
+                    error: 'Invalid email / password.'
                 });
             }
         }
@@ -209,9 +215,7 @@ exports.users_login = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(409).json({
-                    results: results
-                });
+                return res.status(400).json(results);
             }
             return next(err);            
         }
@@ -284,7 +288,7 @@ exports.users_resend_activation = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(409).json({
+                return res.status(400).json({
                     results: results
                 });
             }
@@ -325,7 +329,7 @@ exports.users_activate = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(409).json({
+                return res.status(400).json({
                     results: results
                 });
             }
@@ -406,7 +410,7 @@ exports.users_password_forget = (req, res, next) => {
     async.waterfall(tasks, (err, results) => {
         if(err) {
             if(err === true) {
-                return res.status(409).json({
+                return res.status(400).json({
                     results: results
                 });
             }
@@ -468,7 +472,7 @@ exports.users_password_reset = (req, res, next) => {
 };
 
 exports.users_profile_update = (req, res, next) => {
-    const userId = req.user.userId;
+    const userId = res.locals.user.userId;
     const input = {
         bio: req.body.bio
     };
@@ -490,7 +494,7 @@ exports.users_profile_update = (req, res, next) => {
 };
 
 exports.users_profile_upload_pic = (req, res, next) => {
-    const userId = req.user.userId;
+    const userId = res.locals.user.userId;
     imageUpload(req, res, function(err) {
         if(err) {
             return res.status(500).json({
